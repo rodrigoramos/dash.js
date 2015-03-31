@@ -162,6 +162,16 @@
             "name": "D-Dash #6",
             "url": "http://www-itec.uni-klu.ac.at/dash/ddash/mpdGenerator.php?segmentlength=15&type=full",
             "browsers": ""
+        },
+        {
+            "name": "Encripta",
+            "url": "http://ottvsdash.blob.core.windows.net/dash/wr.004444/0004444.mpd",
+            "browsers": "",
+            "protData": {
+              "com.widevine.alpha": {
+                "laURL": "http://10.1.1.108/Truetech.Widevine.Web/api/LicenseProxy"
+              }
+            }
         }
     ]
 }
