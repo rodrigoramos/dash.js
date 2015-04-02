@@ -32,7 +32,14 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
                 result,
                 label,
                 lang,
+                ccContent;
+
+            if (window.TextDecoder) {
+                var decoder = new TextDecoder('utf-8');
+                ccContent = decoder.decode(bytes);
+            } else {
                 ccContent = String.fromCharCode.apply(null, new Uint16Array(bytes));
+            }
 
             try {
                 result = self.getParser().parse(ccContent);
