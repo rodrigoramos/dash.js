@@ -469,14 +469,15 @@ app.controller('DashController', function($scope, Sources, Notes, Contributors, 
     }
 
     function metadataLoaded() {
-        var languages = player.getAudioLanguages();
+        var i,
+            languages = player.getAudioLanguages();
 
         if (!languages || languages.length == 0)
             return;
 
         $scope.audioSelected = languages[0];
 
-        for (var i = 0; i < languages.length; i++) {
+        for (i = 0; i < languages.length; i++) {
             $scope.audioLanguages.push(languages[i]);
         }
     }
