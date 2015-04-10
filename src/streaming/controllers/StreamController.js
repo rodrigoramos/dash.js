@@ -420,7 +420,28 @@
 
         play: play,
         seek: seek,
-        pause: pause
+        pause: pause,
+        getAudioTrackLanguages: function () {
+            var languages = [],
+                adaptation,
+                streamIndex = !!activeStream ? activeStream.getStreamIndex() : 0,
+                audioAdaptations = this.manifestExt.getAdaptationsForType(this.manifestModel.getValue(), streamIndex, 'audio');
+
+            for (var i = 0; i < audioAdaptations.length; i++) {
+              adaptation = audioAdaptations[i];
+
+              languages.push(this.manifestExt.getLanguageForAdaptation(adaptation));
+            }
+
+            return languages;
+        },
+        setAudioLanguage: function (lang) {
+            var self = this;
+
+            if (!activeStream) return;
+
+            activeStream.setLanguage('audio', lang);
+        }
     };
 };
 

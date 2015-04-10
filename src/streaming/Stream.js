@@ -26,10 +26,9 @@ MediaPlayer.dependencies.Stream = function () {
         initData = [],
         updating = true,
         streamInfo = null,
-        updateError = {},
-
+        updateError = {},        
         eventController = null,
-
+        
         play = function () {
             //this.debug.log("Attempting play...");
 
@@ -456,7 +455,7 @@ MediaPlayer.dependencies.Stream = function () {
 
             for (i; i < ln; i +=1) {
                 processor = streamProcessors[i];
-                mediaInfo = self.adapter.getMediaInfoForType(manifest, streamInfo, processor.getType());
+                mediaInfo = self.adapter.getMediaInfoForType(manifest, streamInfo, processor.getType(), processor.getLanguage());
                 processor.setMediaInfo(mediaInfo);
                 this.adapter.updateData(processor);
             }
@@ -622,7 +621,24 @@ MediaPlayer.dependencies.Stream = function () {
         updateData: updateData,
         play: play,
         seek: seek,
-        pause: pause
+        pause: pause,
+        setLanguage: function (type, language) {
+          var i,
+              processor;
+
+          for (i = 0; i < streamProcessors.length; i++) {
+            processor = streamProcessors[i];
+
+            if (processor.getType() == type) break;
+          }
+
+          if (!processor) return; // TODO: Log error
+
+          processor.stop();
+          processor.setLanguage(language);
+
+          updateData.call(this, streamInfo);
+        }
     };
 };
 

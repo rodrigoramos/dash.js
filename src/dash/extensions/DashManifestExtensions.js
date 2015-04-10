@@ -152,17 +152,20 @@ Dash.dependencies.DashManifestExtensions.prototype = {
         return -1;
     },
 
-    getAdaptationsForType: function (manifest, periodIndex, type) {
+    getAdaptationsForType: function (manifest, periodIndex, type, lang) {
         "use strict";
 
         var self = this,
             adaptationSet = manifest.Period_asArray[periodIndex].AdaptationSet_asArray,
             i,
             len,
+            adaptationLanguage,
             adaptations = [];
 
         for (i = 0, len = adaptationSet.length; i < len; i += 1) {
-            if (this.getIsTypeOf(adaptationSet[i], type)) {
+            adaptationLanguage = this.getLanguageForAdaptation(adaptationSet[i]);
+
+            if (this.getIsTypeOf(adaptationSet[i], type) && (!lang || !adaptationLanguage || adaptationLanguage == lang)) {
                 adaptations.push(self.processAdaptation(adaptationSet[i]));
             }
         }
@@ -170,14 +173,14 @@ Dash.dependencies.DashManifestExtensions.prototype = {
         return adaptations;
     },
 
-    getAdaptationForType: function (manifest, periodIndex, type) {
+    getAdaptationForType: function (manifest, periodIndex, type, lang) {
         "use strict";
         var i,
             len,
             adaptations,
             self = this;
 
-        adaptations = this.getAdaptationsForType(manifest, periodIndex, type);
+        adaptations = this.getAdaptationsForType(manifest, periodIndex, type, lang);
 
         if (!adaptations || adaptations.length === 0) return null;
 

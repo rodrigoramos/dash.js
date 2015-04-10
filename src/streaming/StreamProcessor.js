@@ -6,6 +6,7 @@ MediaPlayer.dependencies.StreamProcessor = function () {
         mediaInfo,
         type,
         eventController,
+        language,
 
         createBufferControllerForType = function(type) {
             var self = this,
@@ -195,6 +196,13 @@ MediaPlayer.dependencies.StreamProcessor = function () {
 
         isDynamic: function(){
             return isDynamic;
+        },
+
+        setLanguage: function(value) {
+            language = value;
+        },
+        getLanguage: function() {
+            return language;
         },
 
         reset: function(errored) {

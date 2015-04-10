@@ -633,8 +633,19 @@ MediaPlayer = function (aContext) {
          * @memberof MediaPlayer#
          * @method
          */
-        convertToTimeCode : convertToTimeCode
+        convertToTimeCode : convertToTimeCode,
 
+        getAudioLanguages: function() {
+          return streamController.getAudioTrackLanguages();
+        },
+
+        selectAudioLanguage: function(lang) {
+          element.pause();
+
+          streamController.setAudioLanguage(lang);
+
+          element.play();
+        }
     };
 };
 
