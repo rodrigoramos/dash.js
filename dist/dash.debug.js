@@ -1472,7 +1472,15 @@ MediaPlayer = function(aContext) {
         getDVRWindowSize: getDVRWindowSize,
         getDVRSeekOffset: getDVRSeekOffset,
         formatUTC: formatUTC,
-        convertToTimeCode: convertToTimeCode
+        convertToTimeCode: convertToTimeCode,
+        getAudioLanguages: function() {
+            return streamController.getAudioTrackLanguages();
+        },
+        selectAudioLanguage: function(lang) {
+            if (!!element) element.pause();
+            streamController.setAudioLanguage(lang);
+            if (!!element) element.play();
+        }
     };
 };
 
@@ -1669,8 +1677,8 @@ Dash.dependencies.DashAdapter = function() {
         manifestInfo.duration = this.manifestExt.getDuration(manifest);
         manifestInfo.isDynamic = this.manifestExt.getIsDynamic(manifest);
         return manifestInfo;
-    }, getMediaInfoForType = function(manifest, streamInfo, type) {
-        var periodInfo = getPeriodForStreamInfo(streamInfo), periodId = periodInfo.id, data = this.manifestExt.getAdaptationForType(manifest, streamInfo.index, type), idx;
+    }, getMediaInfoForType = function(manifest, streamInfo, type, lang) {
+        var periodInfo = getPeriodForStreamInfo(streamInfo), periodId = periodInfo.id, data = this.manifestExt.getAdaptationForType(manifest, streamInfo.index, type, lang), idx;
         if (!data) return null;
         idx = this.manifestExt.getIndexForAdaptation(data, manifest, streamInfo.index);
         adaptations[periodId] = adaptations[periodId] || this.manifestExt.getAdaptationsForPeriod(manifest, periodInfo);
@@ -3356,20 +3364,21 @@ Dash.dependencies.DashManifestExtensions.prototype = {
         }
         return -1;
     },
-    getAdaptationsForType: function(manifest, periodIndex, type) {
+    getAdaptationsForType: function(manifest, periodIndex, type, lang) {
         "use strict";
-        var self = this, adaptationSet = manifest.Period_asArray[periodIndex].AdaptationSet_asArray, i, len, adaptations = [];
+        var self = this, adaptationSet = manifest.Period_asArray[periodIndex].AdaptationSet_asArray, i, len, adaptationLanguage, adaptations = [];
         for (i = 0, len = adaptationSet.length; i < len; i += 1) {
-            if (this.getIsTypeOf(adaptationSet[i], type)) {
+            adaptationLanguage = this.getLanguageForAdaptation(adaptationSet[i]);
+            if (this.getIsTypeOf(adaptationSet[i], type) && (!lang || !adaptationLanguage || adaptationLanguage == lang)) {
                 adaptations.push(self.processAdaptation(adaptationSet[i]));
             }
         }
         return adaptations;
     },
-    getAdaptationForType: function(manifest, periodIndex, type) {
+    getAdaptationForType: function(manifest, periodIndex, type, lang) {
         "use strict";
         var i, len, adaptations, self = this;
-        adaptations = this.getAdaptationsForType(manifest, periodIndex, type);
+        adaptations = this.getAdaptationsForType(manifest, periodIndex, type, lang);
         if (!adaptations || adaptations.length === 0) return null;
         for (i = 0, len = adaptations.length; i < len; i += 1) {
             if (self.getIsMain(adaptations[i])) return adaptations[i];
@@ -4685,7 +4694,7 @@ MediaPlayer.dependencies.Notifier.prototype = {
 
 MediaPlayer.dependencies.Stream = function() {
     "use strict";
-    var manifest, mediaSource, mediaInfos = {}, streamProcessors = [], autoPlay = true, initialized = false, loaded = false, errored = false, kid = null, initData = [], updating = true, streamInfo = null, updateError = {}, eventController = null, play = function() {
+    var manifest, mediaSource, mediaInfos = {}, streamProcessors = [], autoPlay = true, initialized = false, loaded = false, errored = false, kid = null, initData = [], updating = true, streamInfo = null, updateError = {}, eventController = null, languagePerType = {}, play = function() {
         if (!initialized) {
             return;
         }
@@ -4774,7 +4783,7 @@ MediaPlayer.dependencies.Stream = function() {
     }, initializeMediaForType = function(type, manifest) {
         var self = this, mimeType, codec, getCodecOrMimeType = function(mediaInfo) {
             return mediaInfo.codec;
-        }, processor, mediaInfo = self.adapter.getMediaInfoForType(manifest, streamInfo, type);
+        }, processor, defaultLanguage = languagePerType[type], mediaInfo = self.adapter.getMediaInfoForType(manifest, streamInfo, type, defaultLanguage);
         if (type === "text") {
             getCodecOrMimeType = function(mediaInfo) {
                 mimeType = mediaInfo.mimeType;
@@ -4941,7 +4950,7 @@ MediaPlayer.dependencies.Stream = function() {
         }
         for (i; i < ln; i += 1) {
             processor = streamProcessors[i];
-            mediaInfo = self.adapter.getMediaInfoForType(manifest, streamInfo, processor.getType());
+            mediaInfo = self.adapter.getMediaInfoForType(manifest, streamInfo, processor.getType(), processor.getLanguage());
             processor.setMediaInfo(mediaInfo);
             this.adapter.updateData(processor);
         }
@@ -5077,7 +5086,19 @@ MediaPlayer.dependencies.Stream = function() {
         updateData: updateData,
         play: play,
         seek: seek,
-        pause: pause
+        pause: pause,
+        setLanguage: function(type, language) {
+            var i, processor;
+            languagePerType[type] = language;
+            for (i = 0; i < streamProcessors.length; i++) {
+                processor = streamProcessors[i];
+                if (processor.getType() == type) break;
+            }
+            if (!processor) return;
+            processor.stop();
+            processor.setLanguage(language);
+            updateData.call(this, streamInfo);
+        }
     };
 };
 
@@ -5093,7 +5114,7 @@ MediaPlayer.dependencies.Stream.eventList = {
 
 MediaPlayer.dependencies.StreamProcessor = function() {
     "use strict";
-    var isDynamic, stream, mediaInfo, type, eventController, createBufferControllerForType = function(type) {
+    var isDynamic, stream, mediaInfo, type, eventController, language, createBufferControllerForType = function(type) {
         var self = this, controllerName = type === "video" || type === "audio" ? "bufferController" : "textController";
         return self.system.getObject(controllerName);
     };
@@ -5235,6 +5256,12 @@ MediaPlayer.dependencies.StreamProcessor = function() {
         },
         isDynamic: function() {
             return isDynamic;
+        },
+        setLanguage: function(value) {
+            language = value;
+        },
+        getLanguage: function() {
+            return language;
         },
         reset: function(errored) {
             var self = this, bufferController = self.bufferController, trackController = self.trackController, scheduleController = self.scheduleController, liveEdgeFinder = self.liveEdgeFinder, fragmentController = self.fragmentController, abrController = self.abrController, playbackController = self.playbackController, indexHandler = this.indexHandler, baseUrlExt = this.baseURLExt, fragmentModel = this.getFragmentModel(), fragmentLoader = this.fragmentLoader, videoModel = self.videoModel;
@@ -5392,7 +5419,13 @@ MediaPlayer.dependencies.TextSourceBuffer = function() {
             mediaInfo = bufferController.streamProcessor.getCurrentTrack().mediaInfo;
         },
         append: function(bytes) {
-            var self = this, result, label, lang, ccContent = String.fromCharCode.apply(null, new Uint16Array(bytes));
+            var self = this, result, label, lang, ccContent;
+            if (window.TextDecoder) {
+                var decoder = new window.TextDecoder("utf-8");
+                ccContent = decoder.decode(bytes);
+            } else {
+                ccContent = String.fromCharCode.apply(null, new Uint16Array(bytes));
+            }
             try {
                 result = self.getParser().parse(ccContent);
                 label = mediaInfo.id;
@@ -7076,7 +7109,7 @@ MediaPlayer.dependencies.ScheduleController.prototype = {
 
 MediaPlayer.dependencies.StreamController = function() {
     "use strict";
-    var streams = [], activeStream, STREAM_BUFFER_END_THRESHOLD = 6, STREAM_END_THRESHOLD = .2, autoPlay = true, isStreamSwitchingInProgress = false, play = function() {
+    var streams = [], activeStream, STREAM_BUFFER_END_THRESHOLD = 6, STREAM_END_THRESHOLD = .2, autoPlay = true, isStreamSwitchingInProgress = false, defaultLanguage, play = function() {
         activeStream.play();
     }, pause = function() {
         activeStream.pause();
@@ -7202,6 +7235,7 @@ MediaPlayer.dependencies.StreamController = function() {
                     stream.setStreamInfo(streamInfo);
                     stream.setVideoModel(pIdx === 0 ? self.videoModel : createVideoModel.call(self));
                     stream.setPlaybackController(playbackCtrl);
+                    if (!!defaultLanguage) stream.setLanguage("audio", defaultLanguage);
                     playbackCtrl.subscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_PLAYBACK_ERROR, stream);
                     playbackCtrl.subscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_PLAYBACK_METADATA_LOADED, stream);
                     stream.initProtection();
@@ -7323,7 +7357,19 @@ MediaPlayer.dependencies.StreamController = function() {
         },
         play: play,
         seek: seek,
-        pause: pause
+        pause: pause,
+        getAudioTrackLanguages: function() {
+            var languages = [], adaptation, streamIndex = !!activeStream ? activeStream.getStreamIndex() : 0, audioAdaptations = this.manifestExt.getAdaptationsForType(this.manifestModel.getValue(), streamIndex, "audio");
+            for (var i = 0; i < audioAdaptations.length; i++) {
+                adaptation = audioAdaptations[i];
+                languages.push(this.manifestExt.getLanguageForAdaptation(adaptation));
+            }
+            return languages;
+        },
+        setAudioLanguage: function(lang) {
+            defaultLanguage = lang;
+            if (!!activeStream) activeStream.setLanguage("audio", lang);
+        }
     };
 };
 
@@ -9404,7 +9450,7 @@ MediaPlayer.rules.ThroughputRule = function() {
             lastRequestThroughput = Math.round(lastRequest.trace[lastRequest.trace.length - 1].b * 8 / downloadTime);
             storeLastRequestThroughputByType(mediaType, lastRequestThroughput);
             averageThroughput = Math.round(getAverageThroughput(mediaType, isDynamic));
-            var adaptation = this.manifestExt.getAdaptationForType(manifest, 0, mediaType);
+            var adaptation = this.manifestExt.getAdaptationForType(manifest, 0, mediaType, mediaInfo.lang);
             var max = mediaInfo.trackCount - 1;
             if (bufferStateVO.state === MediaPlayer.dependencies.BufferController.BUFFER_LOADED && (bufferLevelVO.level >= MediaPlayer.dependencies.BufferController.LOW_BUFFER_THRESHOLD * 2 || isDynamic)) {
                 for (var i = max; i > 0; i--) {
