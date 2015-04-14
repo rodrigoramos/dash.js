@@ -640,11 +640,11 @@ MediaPlayer = function (aContext) {
         },
 
         selectAudioLanguage: function(lang) {
-          element.pause();
+          if (!!element) element.pause();
 
           streamController.setAudioLanguage(lang);
 
-          element.play();
+          if (!!element) element.play();
         }
     };
 };

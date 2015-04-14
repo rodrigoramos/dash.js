@@ -35,7 +35,7 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
                 ccContent;
 
             if (window.TextDecoder) {
-                var decoder = new TextDecoder('utf-8');
+                var decoder = new window.TextDecoder('utf-8');
                 ccContent = decoder.decode(bytes);
             } else {
                 ccContent = String.fromCharCode.apply(null, new Uint16Array(bytes));

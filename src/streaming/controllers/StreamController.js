@@ -26,6 +26,7 @@
         STREAM_END_THRESHOLD = 0.2,
         autoPlay = true,
         isStreamSwitchingInProgress = false,
+        defaultLanguage,
 
         play = function () {
             activeStream.play();
@@ -261,6 +262,7 @@
                         stream.setStreamInfo(streamInfo);
                         stream.setVideoModel(pIdx === 0 ? self.videoModel : createVideoModel.call(self));
                         stream.setPlaybackController(playbackCtrl);
+                        if (!!defaultLanguage) stream.setLanguage('audio', defaultLanguage);
                         playbackCtrl.subscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_PLAYBACK_ERROR, stream);
                         playbackCtrl.subscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_PLAYBACK_METADATA_LOADED, stream);
                         stream.initProtection();
@@ -436,11 +438,10 @@
             return languages;
         },
         setAudioLanguage: function (lang) {
-            var self = this;
+            defaultLanguage = lang;
 
-            if (!activeStream) return;
-
-            activeStream.setLanguage('audio', lang);
+            if (!!activeStream)
+                activeStream.setLanguage('audio', lang);
         }
     };
 };

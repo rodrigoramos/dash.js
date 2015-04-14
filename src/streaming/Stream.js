@@ -26,9 +26,10 @@ MediaPlayer.dependencies.Stream = function () {
         initData = [],
         updating = true,
         streamInfo = null,
-        updateError = {},        
+        updateError = {},
         eventController = null,
-        
+        languagePerType = {},
+
         play = function () {
             //this.debug.log("Attempting play...");
 
@@ -188,7 +189,8 @@ MediaPlayer.dependencies.Stream = function () {
                     return mediaInfo.codec;
                 },
                 processor,
-                mediaInfo = self.adapter.getMediaInfoForType(manifest, streamInfo, type);
+                defaultLanguage = languagePerType[type],
+                mediaInfo = self.adapter.getMediaInfoForType(manifest, streamInfo, type, defaultLanguage);
 
             if (type === "text") {
                 getCodecOrMimeType = function(mediaInfo) {
@@ -626,13 +628,15 @@ MediaPlayer.dependencies.Stream = function () {
           var i,
               processor;
 
+          languagePerType[type] = language;
+
           for (i = 0; i < streamProcessors.length; i++) {
             processor = streamProcessors[i];
 
             if (processor.getType() == type) break;
           }
 
-          if (!processor) return; // TODO: Log error
+          if (!processor) return;
 
           processor.stop();
           processor.setLanguage(language);
