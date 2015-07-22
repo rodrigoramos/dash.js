@@ -131,6 +131,8 @@ app.controller('DashController', function($scope, Sources, Notes, Contributors, 
     $scope.audioDownload = "";
     $scope.audioRatioCount = 0;
     $scope.audioRatio = "";
+    $scope.audioLanguages = [];
+    $scope.audioSelected = null;
 
     var converter = new MetricsTreeConverter();
     $scope.videoMetrics = null;
@@ -229,7 +231,7 @@ app.controller('DashController', function($scope, Sources, Notes, Contributors, 
                 bandwidthValue = Math.round(bandwidthValue);
             }
 
-            numBitratesValue = metricsExt.getMaxIndexForBufferType(type, $scope.streamInfo.index);
+            numBitratesValue = metricsExt.getMaxIndexForBufferType(type);
 
             if (bufferLevel !== null) {
                 bufferLengthValue = bufferLevel.level.toPrecision(5);
@@ -466,8 +468,18 @@ app.controller('DashController', function($scope, Sources, Notes, Contributors, 
         $scope.safeApply();
     }
 
-    function streamSwitch(e) {
-        $scope.streamInfo = e.data.toStreamInfo;
+    function metadataLoaded() {
+        var i,
+            languages = player.getAudioLanguages();
+
+        if (!languages || languages.length == 0)
+            return;
+
+        $scope.audioSelected = languages[0];
+
+        for (i = 0; i < languages.length; i++) {
+            $scope.audioLanguages.push(languages[i]);
+        }
     }
 
     ////////////////////////////////////////
@@ -526,15 +538,16 @@ app.controller('DashController', function($scope, Sources, Notes, Contributors, 
     ////////////////////////////////////////
 
     video = document.querySelector(".dash-video-player video");
+    video.addEventListener('loadedmetadata', metadataLoaded);
+
     context = new Dash.di.DashContext();
     player = new MediaPlayer(context);
     $scope.version = player.getVersion();
 
     player.startup();
-    player.addEventListener(MediaPlayer.events.ERROR, onError.bind(this));
-    player.addEventListener(MediaPlayer.events.METRIC_CHANGED, metricChanged.bind(this));
-    player.addEventListener(MediaPlayer.events.METRIC_UPDATED, metricUpdated.bind(this));
-    player.addEventListener(MediaPlayer.events.SWITCH_STREAM, streamSwitch.bind(this));
+    player.addEventListener("error", onError.bind(this));
+    player.addEventListener("metricChanged", metricChanged.bind(this));
+    player.addEventListener("metricUpdated", metricUpdated.bind(this));
 
     player.attachView(video);
     player.setAutoPlay(true);
@@ -555,7 +568,7 @@ app.controller('DashController', function($scope, Sources, Notes, Contributors, 
     $scope.abrUp = function (type) {
         var newQuality,
             metricsExt = player.getMetricsExt(),
-            max = metricsExt.getMaxIndexForBufferType(type, $scope.streamInfo.index);
+            max = metricsExt.getMaxIndexForBufferType(type);
 
         newQuality = player.getQualityFor(type) + 1;
         // zero based
@@ -615,9 +628,9 @@ app.controller('DashController', function($scope, Sources, Notes, Contributors, 
     }
 
     $scope.doLoad = function () {
-        if ($scope.selectedItem.hasOwnProperty("protData")) {
-            player.attachProtectionData($scope.selectedItem.protData);
-        }
+        if ($scope.selectedItem.protData)
+          player.attachProtectionData($scope.selectedItem.protData);
+
         player.attachSource($scope.selectedItem.url);
         player.setAutoSwitchQuality($scope.abrEnabled);
         $scope.manifestUpdateInfo = null;
@@ -630,29 +643,33 @@ app.controller('DashController', function($scope, Sources, Notes, Contributors, 
                 && item.logo !== "");
     }
 
+    $scope.audioChanged = function () {
+        player.selectAudioLanguage($scope.audioSelected)
+    }
+
     // Get initial stream if it was passed in.
-	var paramUrl = null;
+    var paramUrl = null;
 
     if (vars && vars.hasOwnProperty("url")) {
-    	paramUrl = vars.url;
+        paramUrl = vars.url;
     }
 
     if (vars && vars.hasOwnProperty("mpd")) {
-    	paramUrl = vars.mpd;
+        paramUrl = vars.mpd;
     }
 
     if (paramUrl !== null) {
-    	var startPlayback = true;
+        var startPlayback = true;
     
-    	$scope.selectedItem = {};
+        $scope.selectedItem = {};
         $scope.selectedItem.url = paramUrl;
 
         if (vars.hasOwnProperty("autoplay")) {
-        	startPlayback = (vars.autoplay === 'true');
+            startPlayback = (vars.autoplay === 'true');
         }
 
-    	if (startPlayback) {
-	    	$scope.doLoad();
-		}
+        if (startPlayback) {
+          $scope.doLoad();
+        }
     }
 });

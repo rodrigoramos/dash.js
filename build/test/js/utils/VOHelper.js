@@ -116,14 +116,6 @@
 
         getCompleteRequest: function() {
             return createRequest("complete");
-        },
-
-        getDummyMediaInfo: function(type) {
-            return {
-                type: type,
-                bitrateList: [1000, 2000, 3000],
-                trackCount: 3
-            }
         }
     };
 

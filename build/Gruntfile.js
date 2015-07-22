@@ -113,8 +113,7 @@ module.exports = function(grunt) {
           template: require('grunt-template-jasmine-istanbul'),
           templateOptions: {
             coverage: './reports/coverage.json',
-            report: './reports/coverage',
-            files: '../**/*'
+            report: './reports/coverage'
           },
           junit: {
             path: grunt.option('jsunit-path'),

@@ -1,36 +1,20 @@
-/**
- * The copyright in this software is being made available under the BSD License,
- * included below. This software may be subject to other third party and contributor
- * rights, including patent rights, and no such rights are granted under this license.
+/*
+ * The copyright in this software is being made available under the BSD License, included below. This software may be subject to other third party and contributor rights, including patent rights, and no such rights are granted under this license.
  *
- * Copyright (c) 2013, Dash Industry Forum.
+ * Copyright (c) 2013, Digital Primates
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *  * Redistributions of source code must retain the above copyright notice, this
- *  list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright notice,
- *  this list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *  * Neither the name of Dash Industry Forum nor the names of its
- *  contributors may be used to endorse or promote products derived from this software
- *  without specific prior written permission.
+ * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ * •  Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ * •  Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+ * •  Neither the name of the Digital Primates nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
  *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS AS IS AND ANY
- *  EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- *  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- *  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
- *  INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- *  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- *  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *  POSSIBILITY OF SUCH DAMAGE.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 MediaPlayer.dependencies.SourceBufferExtensions = function () {
     "use strict";
     this.system = undefined;
+    this.errHandler = undefined;
     this.notify = undefined;
     this.subscribe = undefined;
     this.unsubscribe = undefined;
@@ -48,7 +32,7 @@ MediaPlayer.dependencies.SourceBufferExtensions.prototype = {
         try {
             buffer = mediaSource.addSourceBuffer(codec);
         } catch(ex) {
-            if ((mediaInfo.isText)||(codec.indexOf('codecs="stpp"')!=-1)) {
+            if (mediaInfo.isText) {
                 buffer = self.system.getObject("textSourceBuffer");
             } else {
                 throw ex;
@@ -86,7 +70,7 @@ MediaPlayer.dependencies.SourceBufferExtensions.prototype = {
             return null;
         }
 
-        if (ranges !== null && ranges !== undefined) {
+        if (ranges !== null) {
             for (i = 0, len = ranges.length; i < len; i += 1) {
                 start = ranges.start(i);
                 end = ranges.end(i);
@@ -158,17 +142,17 @@ MediaPlayer.dependencies.SourceBufferExtensions.prototype = {
                 if (buffer.updating) return;
                 // updating is completed, now we can stop checking and resolve the promise
                 clearInterval(intervalId);
-                callback();
+                callback(true);
             },
             updateEndHandler = function() {
                 if (buffer.updating) return;
 
                 buffer.removeEventListener("updateend", updateEndHandler, false);
-                callback();
+                callback(true);
             };
 
         if (!buffer.updating) {
-            callback();
+            callback(true);
             return;
         }
 
@@ -186,7 +170,7 @@ MediaPlayer.dependencies.SourceBufferExtensions.prototype = {
         }
     },
 
-    append: function (buffer, bytes,appendedBytesInfo) {
+    append: function (buffer, bytes) {
         var self = this,
             appendMethod = ("append" in buffer) ? "append" : (("appendBuffer" in buffer) ? "appendBuffer" : null);
 
@@ -194,7 +178,7 @@ MediaPlayer.dependencies.SourceBufferExtensions.prototype = {
 
         try {
             self.waitForUpdateEnd(buffer, function() {
-                buffer[appendMethod](bytes,appendedBytesInfo);
+                buffer[appendMethod](bytes);
 
                 // updating is in progress, we should wait for it to complete before signaling that this operation is done
                 self.waitForUpdateEnd(buffer, function() {

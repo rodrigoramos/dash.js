@@ -1,32 +1,15 @@
-/**
- * The copyright in this software is being made available under the BSD License,
- * included below. This software may be subject to other third party and contributor
- * rights, including patent rights, and no such rights are granted under this license.
+/*
+ * The copyright in this software is being made available under the BSD License, included below. This software may be subject to other third party and contributor rights, including patent rights, and no such rights are granted under this license.
  *
- * Copyright (c) 2013, Dash Industry Forum.
+ * Copyright (c) 2013, Digital Primates
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *  * Redistributions of source code must retain the above copyright notice, this
- *  list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright notice,
- *  this list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *  * Neither the name of Dash Industry Forum nor the names of its
- *  contributors may be used to endorse or promote products derived from this software
- *  without specific prior written permission.
+ * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ * •  Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ * •  Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+ * •  Neither the name of the Digital Primates nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
  *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS AS IS AND ANY
- *  EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- *  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- *  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
- *  INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- *  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- *  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *  POSSIBILITY OF SUCH DAMAGE.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 Dash.dependencies.DashHandler = function () {
     "use strict";
@@ -48,8 +31,8 @@ Dash.dependencies.DashHandler = function () {
 
         replaceTokenForTemplate = function (url, token, value) {
 
-            var startPos,
-                endPos,
+            var startPos = 0,
+                endPos = 0,
                 tokenLen = token.length,
                 formatTag = "%0",
                 formatTagLen = formatTag.length,
@@ -70,7 +53,7 @@ Dash.dependencies.DashHandler = function () {
                     return url;
                 }
 
-                // the next '$' must be the end of the identifier
+                // the next '$' must be the end of the identifer
                 // if there isn't one, return the url as is.
                 endPos = url.indexOf("$", startPos + tokenLen);
                 if (endPos < 0) {
@@ -105,7 +88,7 @@ Dash.dependencies.DashHandler = function () {
                         paddedValue = zeroPadToLength(value.toString(8), width);
                         break;
                     default:
-                        this.log("Unsupported/invalid IEEE 1003.1 format identifier string in URL");
+                        this.debug.log("Unsupported/invalid IEEE 1003.1 format identifier string in URL");
                         return url;
                     }
                 } else {
@@ -173,7 +156,7 @@ Dash.dependencies.DashHandler = function () {
             if (!representation) return null;
 
             request = generateInitRequest.call(self, representation, type);
-            //self.log("Got an initialization.");
+            //self.debug.log("Got an initialization.");
 
             return request;
         },
@@ -185,9 +168,9 @@ Dash.dependencies.DashHandler = function () {
                 seg,
                 fTime;
 
-            //this.log("Checking for stream end...");
+            //this.debug.log("Checking for stream end...");
             if (isDynamic) {
-                //this.log("Live never ends! (TODO)");
+                //this.debug.log("Live never ends! (TODO)");
                 // TODO : Check the contents of the last box to signal end.
                 isFinished = false;
             } else {
@@ -199,7 +182,7 @@ Dash.dependencies.DashHandler = function () {
                     if (seg) {
                         fTime = seg.presentationStartTime - period.start;
                         sDuration = representation.adaptation.period.duration;
-                        this.log(representation.segmentInfoType + ": " + fTime + " / " + sDuration);
+                        this.debug.log(representation.segmentInfoType + ": " + fTime + " / " + sDuration);
                         isFinished = (fTime >= sDuration);
                     }
                 } else {
@@ -787,7 +770,7 @@ Dash.dependencies.DashHandler = function () {
 
             requestedTime = time;
 
-            self.log("Getting the request for time: " + time);
+            self.debug.log("Getting the request for time: " + time);
 
             index = getIndexForSegments.call(self, time, representation, timeThreshold);
             getSegments.call(self, representation);
@@ -796,24 +779,24 @@ Dash.dependencies.DashHandler = function () {
                 index = getIndexForSegments.call(self, time, representation, timeThreshold);
             }
 
-            //self.log("Got segments.");
-            //self.log(segments);
-            //self.log("Got a list of segments, so dig deeper.");
-            self.log("Index for time " + time + " is " + index);
+            //self.debug.log("Got segments.");
+            //self.debug.log(segments);
+            //self.debug.log("Got a list of segments, so dig deeper.");
+            self.debug.log("Index for time " + time + " is " + index);
 
             finished = isMediaFinished.call(self, representation);
 
-            //self.log("Stream finished? " + finished);
+            //self.debug.log("Stream finished? " + finished);
             if (finished) {
                 request = new MediaPlayer.vo.FragmentRequest();
                 request.action = request.ACTION_COMPLETE;
                 request.index = index;
                 request.mediaType = type;
-                self.log("Signal complete.");
-                self.log(request);
+                self.debug.log("Signal complete.");
+                self.debug.log(request);
             } else {
-                //self.log("Got a request.");
-                //self.log(request);
+                //self.debug.log("Got a request.");
+                //self.debug.log(request);
                 segment = getSegmentByIndex(index, representation);
                 request = getRequestForSegment.call(self, segment);
             }
@@ -844,7 +827,7 @@ Dash.dependencies.DashHandler = function () {
                 return null;
             }
 
-            //self.log("Getting the next request.");
+            //self.debug.log("Getting the next request.");
 
             if (index === -1) {
                 throw "You must call getSegmentRequestForTime first.";
@@ -854,22 +837,22 @@ Dash.dependencies.DashHandler = function () {
             index += 1;
             idx = index;
 
-            //self.log("New index: " + index);
+            //self.debug.log("New index: " + index);
 
             finished = isMediaFinished.call(self, representation);
 
-            //self.log("Stream finished? " + finished);
+            //self.debug.log("Stream finished? " + finished);
             if (finished) {
                 request = new MediaPlayer.vo.FragmentRequest();
                 request.action = request.ACTION_COMPLETE;
                 request.index = idx;
                 request.mediaType = type;
-                self.log("Signal complete.");
-                //self.log(request);
+                self.debug.log("Signal complete.");
+                //self.debug.log(request);
             } else {
                 getSegments.call(self, representation);
-                //self.log("Got segments.");
-                //self.log(segments);
+                //self.debug.log("Got segments.");
+                //self.debug.log(segments);
                 segment = getSegmentByIndex(idx, representation);
                 request = getRequestForSegment.call(self, segment);
             }
@@ -879,7 +862,7 @@ Dash.dependencies.DashHandler = function () {
 
         onInitializationLoaded = function(e) {
             var representation = e.data.representation;
-            //self.log("Got an initialization.");
+            //self.debug.log("Got an initialization.");
             if (!representation.segments) return;
 
             this.notify(Dash.dependencies.DashHandler.eventList.ENAME_REPRESENTATION_UPDATED, {representation: representation});
@@ -927,7 +910,7 @@ Dash.dependencies.DashHandler = function () {
         };
 
     return {
-        log: undefined,
+        debug: undefined,
         baseURLExt: undefined,
         timelineConverter: undefined,
         metricsModel: undefined,
@@ -944,7 +927,6 @@ Dash.dependencies.DashHandler = function () {
         initialize: function(streamProcessor) {
             this.subscribe(Dash.dependencies.DashHandler.eventList.ENAME_REPRESENTATION_UPDATED, streamProcessor.trackController);
             type = streamProcessor.getType();
-            this.setMediaType(type);
             isDynamic = streamProcessor.isDynamic();
             this.streamProcessor = streamProcessor;
         },

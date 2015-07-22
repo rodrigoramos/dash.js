@@ -22,10 +22,10 @@ describe("FragmentModel", function () {
     it("should not have any loading, pending, executed or rejected requests", function () {
         var expectedValue = 0;
 
-        expect(fragmentModel.getRequests({state: MediaPlayer.dependencies.FragmentModel.states.PENDING}).length).toEqual(expectedValue);
-        expect(fragmentModel.getRequests({state: MediaPlayer.dependencies.FragmentModel.states.LOADING}).length).toEqual(expectedValue);
-        expect(fragmentModel.getRequests({state: MediaPlayer.dependencies.FragmentModel.states.EXECUTED}).length).toEqual(expectedValue);
-        expect(fragmentModel.getRequests({state: MediaPlayer.dependencies.FragmentModel.states.REJECTED}).length).toEqual(expectedValue);
+        expect(fragmentModel.getPendingRequests().length).toEqual(expectedValue);
+        expect(fragmentModel.getLoadingRequests().length).toEqual(expectedValue);
+        expect(fragmentModel.getExecutedRequests().length).toEqual(expectedValue);
+        expect(fragmentModel.getRejectedRequests().length).toEqual(expectedValue);
     });
 
     describe("when a request has been added", function () {
@@ -49,7 +49,7 @@ describe("FragmentModel", function () {
 
         it("should return pending requests", function () {
             var expectedValue = 2,
-                pendingRequests = fragmentModel.getRequests({state: MediaPlayer.dependencies.FragmentModel.states.PENDING});
+                pendingRequests = fragmentModel.getPendingRequests();
 
             expect(pendingRequests.length).toEqual(expectedValue);
         });
@@ -59,7 +59,7 @@ describe("FragmentModel", function () {
                 pendingRequests;
 
             fragmentModel.cancelPendingRequests();
-            pendingRequests = fragmentModel.getRequests({state: MediaPlayer.dependencies.FragmentModel.states.PENDING});
+            pendingRequests = fragmentModel.getPendingRequests();
             expect(pendingRequests.length).toEqual(expectedValue);
         });
 
@@ -67,20 +67,20 @@ describe("FragmentModel", function () {
             var observer = {},
                 isFired = false;
 
-            observer[MediaPlayer.dependencies.FragmentModel.eventList.ENAME_STREAM_COMPLETED] = function(/*e*/) {
+            observer[MediaPlayer.dependencies.FragmentModel.eventList.ENAME_STREAM_COMPLETED] = function(sender, request) {
                 isFired = true;
             };
 
             fragmentModel.subscribe(MediaPlayer.dependencies.FragmentModel.eventList.ENAME_STREAM_COMPLETED, observer);
 
-            expect(fragmentModel.getRequests({state: MediaPlayer.dependencies.FragmentModel.states.PENDING}).length).toBe(2);
+            expect(fragmentModel.getPendingRequests().length).toBe(2);
             fragmentModel.addRequest(completeRequest);
-            expect(fragmentModel.getRequests({state: MediaPlayer.dependencies.FragmentModel.states.PENDING}).length).toBe(3);
+            expect(fragmentModel.getPendingRequests().length).toBe(3);
             fragmentModel.executeRequest(completeRequest);
 
-            expect(fragmentModel.getRequests({state: MediaPlayer.dependencies.FragmentModel.states.LOADING}).length).toBe(0);
-            expect(fragmentModel.getRequests({state: MediaPlayer.dependencies.FragmentModel.states.PENDING}).length).toBe(2);
-            expect(fragmentModel.getRequests({state: MediaPlayer.dependencies.FragmentModel.states.EXECUTED}).length).toBe(1);
+            expect(fragmentModel.getLoadingRequests().length).toBe(0);
+            expect(fragmentModel.getPendingRequests().length).toBe(2);
+            expect(fragmentModel.getExecutedRequests().length).toBe(1);
 
             expect(isFired).toBeTruthy();
         });
@@ -110,7 +110,7 @@ describe("FragmentModel", function () {
                 var observer = {},
                     isFired = false;
 
-                observer[MediaPlayer.dependencies.FragmentModel.eventList.ENAME_FRAGMENT_LOADING_STARTED] = function(/*e*/) {
+                observer[MediaPlayer.dependencies.FragmentModel.eventList.ENAME_FRAGMENT_LOADING_STARTED] = function(sender, request) {
                     isFired = true;
                 };
 
@@ -125,7 +125,7 @@ describe("FragmentModel", function () {
                 jasmine.clock().tick(delay + 1);
 
                 var expectedValue = 0,
-                    pendingRequests = fragmentModel.getRequests({state: MediaPlayer.dependencies.FragmentModel.states.PENDING});
+                    pendingRequests = fragmentModel.getPendingRequests();
                 expect(pendingRequests.length).toEqual(expectedValue);
             });
 
@@ -133,7 +133,7 @@ describe("FragmentModel", function () {
                 jasmine.clock().tick(delay + 1);
 
                 var expectedValue = 2,
-                    loadingRequests = fragmentModel.getRequests({state: MediaPlayer.dependencies.FragmentModel.states.LOADING});
+                    loadingRequests = fragmentModel.getLoadingRequests();
 
                 expect(loadingRequests.length).toEqual(expectedValue);
             });
@@ -144,7 +144,7 @@ describe("FragmentModel", function () {
                 var expectedValue = 0,
                     loadingRequests;
                 fragmentModel.abortRequests();
-                loadingRequests = fragmentModel.getRequests({state: MediaPlayer.dependencies.FragmentModel.states.LOADING});
+                loadingRequests = fragmentModel.getLoadingRequests();
                 expect(loadingRequests.length).toEqual(expectedValue);
             });
         });

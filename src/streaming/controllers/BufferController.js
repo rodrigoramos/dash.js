@@ -1,32 +1,15 @@
-/**
- * The copyright in this software is being made available under the BSD License,
- * included below. This software may be subject to other third party and contributor
- * rights, including patent rights, and no such rights are granted under this license.
+/*
+ * The copyright in this software is being made available under the BSD License, included below. This software may be subject to other third party and contributor rights, including patent rights, and no such rights are granted under this license.
  *
- * Copyright (c) 2013, Dash Industry Forum.
+ * Copyright (c) 2013, Digital Primates
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *  * Redistributions of source code must retain the above copyright notice, this
- *  list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright notice,
- *  this list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *  * Neither the name of Dash Industry Forum nor the names of its
- *  contributors may be used to endorse or promote products derived from this software
- *  without specific prior written permission.
+ * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ * •  Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ * •  Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+ * •  Neither the name of the Digital Primates nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
  *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS AS IS AND ANY
- *  EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- *  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- *  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
- *  INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- *  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- *  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *  POSSIBILITY OF SUCH DAMAGE.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 MediaPlayer.dependencies.BufferController = function () {
     "use strict";
@@ -53,7 +36,7 @@ MediaPlayer.dependencies.BufferController = function () {
         inbandEventFound = false,
 
         waitingForInit = function() {
-            var loadingReqs = this.streamProcessor.getFragmentModel().getRequests({state: MediaPlayer.dependencies.FragmentModel.states.LOADING});
+            var loadingReqs = this.streamProcessor.getFragmentModel().getLoadingRequests();
 
             if ((currentQuality > requiredQuality) && (hasReqsForQuality(pendingMedia, currentQuality) || hasReqsForQuality(loadingReqs, currentQuality))) {
                 return false;
@@ -88,7 +71,7 @@ MediaPlayer.dependencies.BufferController = function () {
 
             if (e.data.fragmentModel !== self.streamProcessor.getFragmentModel()) return;
 
-            self.log("Initialization finished loading");
+            self.debug.log("Initialization finished loading: " + type);
 
             // cache the initialization data to use it next time the quality has changed
             initializationData[e.data.quality] = e.data.bytes;
@@ -107,8 +90,7 @@ MediaPlayer.dependencies.BufferController = function () {
                 bytes = e.data.bytes,
                 quality = e.data.quality,
                 index = e.data.index,
-                startTime = e.data.startTime,
-                request = this.streamProcessor.getFragmentModel().getRequests({state: MediaPlayer.dependencies.FragmentModel.states.EXECUTED, quality: quality, index: index})[0],
+                request = this.streamProcessor.getFragmentModel().getExecutedRequestForQualityAndIndex(quality, index),
                 currentTrack = this.streamProcessor.getTrackForQuality(quality),
                 eventStreamMedia = this.adapter.getEventsFor(currentTrack.mediaInfo, this.streamProcessor),
                 eventStreamTrack = this.adapter.getEventsFor(currentTrack, this.streamProcessor);
@@ -120,15 +102,15 @@ MediaPlayer.dependencies.BufferController = function () {
 
             bytes = deleteInbandEvents.call(this, bytes);
 
-            pendingMedia.push({bytes: bytes, quality: quality, index: index, startTime: startTime});
+            pendingMedia.push({bytes: bytes, quality: quality, index: index});
             sortArrayByProperty(pendingMedia, "index");
 
             appendNext.call(this);
 		},
 
-        appendToBuffer = function(data, quality, index,startTime) {
+        appendToBuffer = function(data, quality, index) {
             isAppendingInProgress = true;
-            appendedBytesInfo = {quality: quality, index: index,startTime:startTime};
+            appendedBytesInfo = {quality: quality, index: index};
 
             var self = this,
                 isInit = isNaN(index);
@@ -142,8 +124,8 @@ MediaPlayer.dependencies.BufferController = function () {
                 onMediaRejected.call(self, quality, index);
                 return;
             }
-            //self.log("Push bytes: " + data.byteLength);
-            self.sourceBufferExt.append(buffer, data, appendedBytesInfo);
+            //self.debug.log("Push (" + type + ") bytes: " + data.byteLength);
+            self.sourceBufferExt.append(buffer, data);
         },
 
         onAppended = function(e) {
@@ -181,14 +163,14 @@ MediaPlayer.dependencies.BufferController = function () {
             ranges = self.sourceBufferExt.getAllRanges(buffer);
 
             if (ranges) {
-                //self.log("Append complete: " + ranges.length);
+                //self.debug.log("Append " + type + " complete: " + ranges.length);
                 if (ranges.length > 0) {
                     var i,
                         len;
 
-                    //self.log("Number of buffered ranges: " + ranges.length);
+                    //self.debug.log("Number of buffered " + type + " ranges: " + ranges.length);
                     for (i = 0, len = ranges.length; i < len; i += 1) {
-                        self.log("Buffered Range: " + ranges.start(i) + " - " + ranges.end(i));
+                        self.debug.log("Buffered " + type + " Range: " + ranges.start(i) + " - " + ranges.end(i));
                     }
                 }
             }
@@ -355,7 +337,7 @@ MediaPlayer.dependencies.BufferController = function () {
 
             currentTime = self.playbackController.getTime();
             // we need to remove data that is more than one fragment before the video currentTime
-            req = self.streamProcessor.getFragmentModel().getRequests({state: MediaPlayer.dependencies.FragmentModel.states.EXECUTED, time: currentTime})[0];
+            req = self.fragmentController.getExecutedRequestForTime(self.streamProcessor.getFragmentModel(), currentTime);
             removeEnd = (req && !isNaN(req.startTime)) ? req.startTime : Math.floor(currentTime);
 
             range = self.sourceBufferExt.getBufferRange(buffer, currentTime);
@@ -423,24 +405,23 @@ MediaPlayer.dependencies.BufferController = function () {
 
             hasSufficientBuffer = state;
 
-            var bufferState = getBufferState(),
-                eventName = (bufferState === MediaPlayer.dependencies.BufferController.BUFFER_LOADED) ? MediaPlayer.events.BUFFER_LOADED : MediaPlayer.events.BUFFER_EMPTY;
+            var bufferState = getBufferState();
             this.metricsModel.addBufferState(type, bufferState, bufferTarget);
 
             this.eventBus.dispatchEvent({
-                type: eventName,
+                type: bufferState,
                 data: {
                     bufferType: type
                 }
             });
             this.notify(MediaPlayer.dependencies.BufferController.eventList.ENAME_BUFFER_LEVEL_STATE_CHANGED, {hasSufficientBuffer: state});
-            this.log(hasSufficientBuffer ? ("Got enough buffer to start.") : ("Waiting for more buffer before starting playback."));
+            this.debug.log(hasSufficientBuffer ? ("Got enough " + type + " buffer to start.") : ("Waiting for more " + type + " buffer before starting playback."));
         },
 
         updateBufferTimestampOffset = function(MSETimeOffset) {
             // each track can have its own @presentationTimeOffset, so we should set the offset
             // if it has changed after switching the quality or updating an mpd
-            if (buffer.timestampOffset !== MSETimeOffset && !isNaN(MSETimeOffset)) {
+            if (buffer.timestampOffset !== MSETimeOffset) {
                 buffer.timestampOffset = MSETimeOffset;
             }
         },
@@ -497,7 +478,7 @@ MediaPlayer.dependencies.BufferController = function () {
             if (pendingMedia.length === 0 || isBufferLevelOutrun || isAppendingInProgress || waitingForInit.call(this) || !hasEnoughSpaceToAppend.call(this)) return;
 
             data = pendingMedia.shift();
-            appendToBuffer.call(this, data.bytes, data.quality, data.index, data.startTime);
+            appendToBuffer.call(this, data.bytes, data.quality, data.index);
         },
 
         onDataUpdateCompleted = function(e) {
@@ -509,7 +490,7 @@ MediaPlayer.dependencies.BufferController = function () {
             updateBufferTimestampOffset.call(self, e.data.currentRepresentation.MSETimeOffset);
 
             bufferLength = self.streamProcessor.getStreamInfo().manifestInfo.minBufferTime;
-            //self.log("Min Buffer time: " + bufferLength);
+            //self.debug.log("Min Buffer time: " + bufferLength);
             if (minBufferTime !== bufferLength) {
                 self.setMinBufferTime(bufferLength);
                 self.notify(MediaPlayer.dependencies.BufferController.eventList.ENAME_MIN_BUFFER_TIME_UPDATED, {minBufferTime: bufferLength});
@@ -565,6 +546,7 @@ MediaPlayer.dependencies.BufferController = function () {
         };
 
     return {
+        manifestModel: undefined,
         sourceBufferExt: undefined,
         eventBus: undefined,
         bufferMax: undefined,
@@ -572,7 +554,8 @@ MediaPlayer.dependencies.BufferController = function () {
         metricsModel: undefined,
         metricsExt: undefined,
         adapter: undefined,
-        log: undefined,
+        scheduleRulesCollection:undefined,
+        debug: undefined,
         system: undefined,
         notify: undefined,
         subscribe: undefined,
@@ -603,7 +586,6 @@ MediaPlayer.dependencies.BufferController = function () {
             var self = this;
 
             type = typeValue;
-            self.setMediaType(type);
             self.setMediaSource(source);
             self.setBuffer(buffer);
             self.streamProcessor = streamProcessor;

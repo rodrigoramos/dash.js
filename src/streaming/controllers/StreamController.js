@@ -1,32 +1,15 @@
-/**
- * The copyright in this software is being made available under the BSD License,
- * included below. This software may be subject to other third party and contributor
- * rights, including patent rights, and no such rights are granted under this license.
+/*
+ * The copyright in this software is being made available under the BSD License, included below. This software may be subject to other third party and contributor rights, including patent rights, and no such rights are granted under this license.
  *
- * Copyright (c) 2013, Dash Industry Forum.
+ * Copyright (c) 2013, Digital Primates
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *  * Redistributions of source code must retain the above copyright notice, this
- *  list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright notice,
- *  this list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *  * Neither the name of Dash Industry Forum nor the names of its
- *  contributors may be used to endorse or promote products derived from this software
- *  without specific prior written permission.
+ * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ * •  Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ * •  Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+ * •  Neither the name of the Digital Primates nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
  *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS AS IS AND ANY
- *  EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- *  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- *  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
- *  INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- *  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- *  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *  POSSIBILITY OF SUCH DAMAGE.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
  MediaPlayer.dependencies.StreamController = function () {
     "use strict";
@@ -43,6 +26,7 @@
         STREAM_END_THRESHOLD = 0.2,
         autoPlay = true,
         isStreamSwitchingInProgress = false,
+        defaultLanguage,
 
         play = function () {
             activeStream.play();
@@ -110,16 +94,6 @@
             });
         },
 
-        fireSwitchEvent = function(fromStream, toStream) {
-            this.eventBus.dispatchEvent({
-                type: MediaPlayer.events.SWITCH_STREAM,
-                data: {
-                    fromStreamInfo: fromStream ? fromStream.getStreamInfo() : null,
-                    toStreamInfo: toStream.getStreamInfo()
-                }
-            });
-        },
-
         /*
          * Called when more data is buffered.
          * Used to determine the time current stream is almost buffered and we can start buffering of the next stream.
@@ -132,7 +106,7 @@
         },
 
         /*
-         * Called when current playback position is changed.
+         * Called when current playback positon is changed.
          * Used to determine the time current stream is finished and we should switch to the next stream.
          * TODO move to ???Extensions class
          */
@@ -157,7 +131,7 @@
         },
 
         /*
-         * Called when Seeking event is occurred.
+         * Called when Seeking event is occured.
          * TODO move to ???Extensions class
          */
         onSeeking = function(e) {
@@ -241,7 +215,6 @@
             from.resetEventController();
             activeStream.startEventController();
             isStreamSwitchingInProgress = false;
-            fireSwitchEvent.call(this, from, to);
         },
 
         composeStreams = function() {
@@ -289,9 +262,10 @@
                         stream.setStreamInfo(streamInfo);
                         stream.setVideoModel(pIdx === 0 ? self.videoModel : createVideoModel.call(self));
                         stream.setPlaybackController(playbackCtrl);
+                        if (!!defaultLanguage) stream.setLanguage('audio', defaultLanguage);
                         playbackCtrl.subscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_PLAYBACK_ERROR, stream);
-                        playbackCtrl.subscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_CAN_PLAY, stream);
-                        stream.initProtection(manifest);
+                        playbackCtrl.subscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_PLAYBACK_METADATA_LOADED, stream);
+                        stream.initProtection();
                         stream.setAutoPlay(autoPlay);
                         stream.load(manifest);
                         stream.subscribe(MediaPlayer.dependencies.Stream.eventList.ENAME_STREAM_UPDATED, self);
@@ -306,7 +280,6 @@
                     activeStream = streams[0];
                     attachVideoEvents.call(self, activeStream);
                     activeStream.subscribe(MediaPlayer.dependencies.Stream.eventList.ENAME_STREAM_UPDATED, this.liveEdgeFinder);
-                    fireSwitchEvent.call(self, null, activeStream);
                 }
             } catch(e) {
                 self.errHandler.manifestError(e.message, "nostreamscomposed", self.manifestModel.getValue());
@@ -334,8 +307,8 @@
             if (!e.error) {
                 this.manifestModel.setValue(e.data.manifest);
 
-                this.log("Manifest has loaded.");
-                //self.log(self.manifestModel.getValue());
+                this.debug.log("Manifest has loaded.");
+                //self.debug.log(self.manifestModel.getValue());
 
                 // before composing streams, attempt to synchronize with some
                 // time source (if there are any available)
@@ -353,7 +326,7 @@
         manifestModel: undefined,
         manifestExt: undefined,
         adapter: undefined,
-        log: undefined,
+        debug: undefined,
         metricsModel: undefined,
         metricsExt: undefined,
         videoExt: undefined,
@@ -362,7 +335,6 @@
         protectionExt: undefined,
         timeSyncController: undefined,
         errHandler: undefined,
-        eventBus: undefined,
         notify: undefined,
         subscribe: undefined,
         unsubscribe: undefined,
@@ -400,17 +372,6 @@
 
         getActiveStreamInfo: function() {
             return activeStream ? activeStream.getStreamInfo() : null;
-        },
-
-        /**
-         * @param id
-         * @returns {object}
-         * @memberof StreamController#
-         */
-        getStreamById: function(id) {
-            return streams.filter(function(item){
-                return item.getStreamInfo().id === id;
-            })[0];
         },
 
         initialize: function () {
@@ -461,7 +422,27 @@
 
         play: play,
         seek: seek,
-        pause: pause
+        pause: pause,
+        getAudioTrackLanguages: function () {
+            var languages = [],
+                adaptation,
+                streamIndex = !!activeStream ? activeStream.getStreamIndex() : 0,
+                audioAdaptations = this.manifestExt.getAdaptationsForType(this.manifestModel.getValue(), streamIndex, 'audio');
+
+            for (var i = 0; i < audioAdaptations.length; i++) {
+              adaptation = audioAdaptations[i];
+
+              languages.push(this.manifestExt.getLanguageForAdaptation(adaptation));
+            }
+
+            return languages;
+        },
+        setAudioLanguage: function (lang) {
+            defaultLanguage = lang;
+
+            if (!!activeStream)
+                activeStream.setLanguage('audio', lang);
+        }
     };
 };
 

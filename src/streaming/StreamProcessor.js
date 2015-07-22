@@ -1,33 +1,3 @@
-/**
- * The copyright in this software is being made available under the BSD License,
- * included below. This software may be subject to other third party and contributor
- * rights, including patent rights, and no such rights are granted under this license.
- *
- * Copyright (c) 2013, Dash Industry Forum.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *  * Redistributions of source code must retain the above copyright notice, this
- *  list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright notice,
- *  this list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *  * Neither the name of Dash Industry Forum nor the names of its
- *  contributors may be used to endorse or promote products derived from this software
- *  without specific prior written permission.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS AS IS AND ANY
- *  EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- *  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- *  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
- *  INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- *  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- *  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *  POSSIBILITY OF SUCH DAMAGE.
- */
 MediaPlayer.dependencies.StreamProcessor = function () {
     "use strict";
 
@@ -36,10 +6,11 @@ MediaPlayer.dependencies.StreamProcessor = function () {
         mediaInfo,
         type,
         eventController,
+        language,
 
         createBufferControllerForType = function(type) {
             var self = this,
-            controllerName = (type === "video" || type === "audio" || type === "fragmentedText") ? "bufferController" : "textController";
+            controllerName = (type === "video" || type === "audio") ? "bufferController" : "textController";
 
             return self.system.getObject(controllerName);
         };
@@ -49,6 +20,7 @@ MediaPlayer.dependencies.StreamProcessor = function () {
         indexHandler: undefined,
         liveEdgeFinder: undefined,
         timelineConverter: undefined,
+        eventList: undefined,
         abrController: undefined,
         baseURLExt: undefined,
         adapter: undefined,
@@ -82,7 +54,7 @@ MediaPlayer.dependencies.StreamProcessor = function () {
             trackController.subscribe(Dash.dependencies.RepresentationController.eventList.ENAME_DATA_UPDATE_COMPLETED, bufferController);
             fragmentController.subscribe(MediaPlayer.dependencies.FragmentController.eventList.ENAME_INIT_FRAGMENT_LOADED, bufferController);
 
-            if (type === "video" || type === "audio" || type === "fragmentedText") {
+            if (type === "video" || type === "audio") {
                 abrController.subscribe(MediaPlayer.dependencies.AbrController.eventList.ENAME_QUALITY_CHANGED, bufferController);
                 abrController.subscribe(MediaPlayer.dependencies.AbrController.eventList.ENAME_QUALITY_CHANGED, trackController);
                 abrController.subscribe(MediaPlayer.dependencies.AbrController.eventList.ENAME_QUALITY_CHANGED, scheduleController);
@@ -94,8 +66,8 @@ MediaPlayer.dependencies.StreamProcessor = function () {
                 trackController.subscribe(Dash.dependencies.RepresentationController.eventList.ENAME_DATA_UPDATE_STARTED, scheduleController);
 
                 trackController.subscribe(Dash.dependencies.RepresentationController.eventList.ENAME_DATA_UPDATE_COMPLETED, scheduleController);
+                trackController.subscribe(Dash.dependencies.RepresentationController.eventList.ENAME_DATA_UPDATE_COMPLETED, abrController);
                 trackController.subscribe(Dash.dependencies.RepresentationController.eventList.ENAME_DATA_UPDATE_COMPLETED, stream);
-                stream.subscribe(MediaPlayer.dependencies.Stream.eventList.ENAME_STREAM_UPDATED, scheduleController);
 
                 if (!playbackController.streamProcessor) {
                     playbackController.streamProcessor = self;
@@ -146,7 +118,6 @@ MediaPlayer.dependencies.StreamProcessor = function () {
             indexHandler.initialize(this);
             bufferController.initialize(type, buffer, mediaSource, self);
             scheduleController.initialize(type, this);
-            abrController.initialize(type, this);
 
             fragmentModel = this.getFragmentModel();
             fragmentModel.setLoader(fragmentLoader);
@@ -156,7 +127,7 @@ MediaPlayer.dependencies.StreamProcessor = function () {
             fragmentModel.subscribe(MediaPlayer.dependencies.FragmentModel.eventList.ENAME_FRAGMENT_LOADING_COMPLETED, scheduleController);
             fragmentLoader.subscribe(MediaPlayer.dependencies.FragmentLoader.eventList.ENAME_LOADING_COMPLETED, fragmentModel);
 
-            if (type === "video" || type === "audio" || type === "fragmentedText") {
+            if (type === "video" || type === "audio") {
                 bufferController.subscribe(MediaPlayer.dependencies.BufferController.eventList.ENAME_BUFFER_LEVEL_OUTRUN, fragmentModel);
                 bufferController.subscribe(MediaPlayer.dependencies.BufferController.eventList.ENAME_BUFFER_LEVEL_BALANCED, fragmentModel);
                 bufferController.subscribe(MediaPlayer.dependencies.BufferController.eventList.ENAME_BYTES_REJECTED, fragmentModel);
@@ -188,8 +159,6 @@ MediaPlayer.dependencies.StreamProcessor = function () {
         },
 
         setMediaInfo: function(value) {
-            if (value === mediaInfo || (value && mediaInfo && (value.id !== mediaInfo.id))) return;
-
             mediaInfo = value;
         },
 
@@ -229,6 +198,13 @@ MediaPlayer.dependencies.StreamProcessor = function () {
             return isDynamic;
         },
 
+        setLanguage: function(value) {
+            language = value;
+        },
+        getLanguage: function() {
+            return language;
+        },
+
         reset: function(errored) {
             var self = this,
                 bufferController = self.bufferController,
@@ -255,10 +231,9 @@ MediaPlayer.dependencies.StreamProcessor = function () {
             trackController.unsubscribe(Dash.dependencies.RepresentationController.eventList.ENAME_DATA_UPDATE_STARTED, scheduleController);
             trackController.unsubscribe(Dash.dependencies.RepresentationController.eventList.ENAME_DATA_UPDATE_COMPLETED, bufferController);
             trackController.unsubscribe(Dash.dependencies.RepresentationController.eventList.ENAME_DATA_UPDATE_COMPLETED, scheduleController);
+            trackController.unsubscribe(Dash.dependencies.RepresentationController.eventList.ENAME_DATA_UPDATE_COMPLETED, abrController);
             trackController.unsubscribe(Dash.dependencies.RepresentationController.eventList.ENAME_DATA_UPDATE_COMPLETED, stream);
             trackController.unsubscribe(Dash.dependencies.RepresentationController.eventList.ENAME_DATA_UPDATE_COMPLETED, playbackController);
-
-            stream.unsubscribe(MediaPlayer.dependencies.Stream.eventList.ENAME_STREAM_UPDATED, scheduleController);
 
             fragmentController.unsubscribe(MediaPlayer.dependencies.FragmentController.eventList.ENAME_INIT_FRAGMENT_LOADED, bufferController);
             fragmentController.unsubscribe(MediaPlayer.dependencies.FragmentController.eventList.ENAME_MEDIA_FRAGMENT_LOADED, bufferController);
@@ -304,7 +279,7 @@ MediaPlayer.dependencies.StreamProcessor = function () {
             fragmentModel.unsubscribe(MediaPlayer.dependencies.FragmentModel.eventList.ENAME_STREAM_COMPLETED, fragmentController);
             fragmentModel.unsubscribe(MediaPlayer.dependencies.FragmentModel.eventList.ENAME_FRAGMENT_LOADING_COMPLETED, scheduleController);
             fragmentLoader.unsubscribe(MediaPlayer.dependencies.FragmentLoader.eventList.ENAME_LOADING_COMPLETED, fragmentModel);
-            fragmentModel.reset();
+            fragmentController.resetModel(fragmentModel);
 
             indexHandler.reset();
             this.bufferController.reset(errored);

@@ -1,32 +1,15 @@
-/**
- * The copyright in this software is being made available under the BSD License,
- * included below. This software may be subject to other third party and contributor
- * rights, including patent rights, and no such rights are granted under this license.
+/*
+ * The copyright in this software is being made available under the BSD License, included below. This software may be subject to other third party and contributor rights, including patent rights, and no such rights are granted under this license.
  *
- * Copyright (c) 2013, Dash Industry Forum.
+ * Copyright (c) 2013, Fraunhofer Fokus
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *  * Redistributions of source code must retain the above copyright notice, this
- *  list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright notice,
- *  this list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *  * Neither the name of Dash Industry Forum nor the names of its
- *  contributors may be used to endorse or promote products derived from this software
- *  without specific prior written permission.
+ * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ * •  Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ * •  Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+ * •  Neither the name of the Digital Primates nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
  *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS AS IS AND ANY
- *  EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- *  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- *  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
- *  INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- *  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- *  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *  POSSIBILITY OF SUCH DAMAGE.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 MediaPlayer.dependencies.EventController = function(){
     "use strict";
@@ -42,7 +25,10 @@ MediaPlayer.dependencies.EventController = function(){
         MPD_RELOAD_VALUE = 1,
 
         reset = function() {
-            clear();
+            if(eventInterval !== null) {
+                clearInterval(eventInterval);
+                eventInterval = null;
+            }
             inlineEvents = null;
             inbandEvents = null;
             activeEvents = null;
@@ -58,7 +44,7 @@ MediaPlayer.dependencies.EventController = function(){
         start = function () {
             var self = this;
 
-            self.log("Start Event Controller");
+            self.debug.log("Start Event Controller");
             if (!isNaN(refreshDelay)) {
                 eventInterval = setInterval(onEventTimer.bind(this), refreshDelay);
             }
@@ -75,7 +61,7 @@ MediaPlayer.dependencies.EventController = function(){
             if(values && values.length > 0){
                 inlineEvents = values;
             }
-            self.log("Added "+values.length+ " inline events");
+            self.debug.log("Added "+values.length+ " inline events");
         },
 
         /**
@@ -87,7 +73,7 @@ MediaPlayer.dependencies.EventController = function(){
             for(var i=0;i<values.length;i++) {
                 var event = values[i];
                 inbandEvents[event.id] = event;
-                self.log("Add inband event with id "+event.id);
+                self.debug.log("Add inband event with id "+event.id);
             }
         },
 
@@ -113,7 +99,7 @@ MediaPlayer.dependencies.EventController = function(){
                     if (curr !== undefined) {
                         presentationTime = curr.presentationTime / curr.eventStream.timescale;
                         if (presentationTime === 0 || (presentationTime <= currentVideoTime && presentationTime + presentationTimeThreshold > currentVideoTime)) {
-                            self.log("Start Event at " + currentVideoTime);
+                            self.debug.log("Start Event at " + currentVideoTime);
                             if (curr.duration > 0) activeEvents.push(curr);
                             if (curr.eventStream.schemeIdUri == MPD_RELOAD_SCHEME && curr.eventStream.value == MPD_RELOAD_VALUE) refreshManifest.call(this);
                             events.splice(j, 1);
@@ -135,7 +121,7 @@ MediaPlayer.dependencies.EventController = function(){
                 for (var i = 0; i < activeEvents.length; i++) {
                     var curr = activeEvents[i];
                     if (curr !== null && (curr.duration + curr.presentationTime) / curr.eventStream.timescale < currentVideoTime) {
-                        self.log("Remove Event at time " + currentVideoTime);
+                        self.debug.log("Remove Event at time " + currentVideoTime);
                         curr = null;
                         activeEvents.splice(i, 1);
                     }
@@ -152,15 +138,17 @@ MediaPlayer.dependencies.EventController = function(){
             if (manifest.hasOwnProperty("Location")) {
                 url = manifest.Location;
             }
-            self.log("Refresh manifest @ " + url);
+            self.debug.log("Refresh manifest @ " + url);
             self.manifestLoader.load(url);
         };
 
     return {
         manifestModel: undefined,
         manifestLoader:undefined,
-        log: undefined,
+        debug: undefined,
         system: undefined,
+        errHandler: undefined,
+        videoModel:undefined,
         addInlineEvents : addInlineEvents,
         addInbandEvents : addInbandEvents,
         reset : reset,

@@ -1,32 +1,15 @@
-/**
- * The copyright in this software is being made available under the BSD License,
- * included below. This software may be subject to other third party and contributor
- * rights, including patent rights, and no such rights are granted under this license.
- *
- * Copyright (c) 2013, Dash Industry Forum.
+/*
+ * The copyright in this software is being made available under the BSD License, included below. This software may be subject to other third party and contributor rights, including patent rights, and no such rights are granted under this license.
+ * 
+ * Copyright (c) 2013, Digital Primates
  * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *  * Redistributions of source code must retain the above copyright notice, this
- *  list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright notice,
- *  this list of conditions and the following disclaimer in the documentation and/or
- *  other materials provided with the distribution.
- *  * Neither the name of Dash Industry Forum nor the names of its
- *  contributors may be used to endorse or promote products derived from this software
- *  without specific prior written permission.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS AS IS AND ANY
- *  EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- *  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- *  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
- *  INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- *  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- *  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *  POSSIBILITY OF SUCH DAMAGE.
+ * 
+ * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+ * •  Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+ * •  Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+ * •  Neither the name of the Digital Primates nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 Dash.dependencies.BaseURLExtensions = function () {
     "use strict";
@@ -155,7 +138,7 @@ Dash.dependencies.BaseURLExtensions = function () {
                 segments.push(segment);
             }
 
-            this.log("Parsed SIDX box: " + segments.length + " segments.");
+            this.debug.log("Parsed SIDX box: " + segments.length + " segments.");
             return segments;
         },
 
@@ -168,6 +151,7 @@ Dash.dependencies.BaseURLExtensions = function () {
                 pos = 0,
                 type = "",
                 size = 0,
+                bytesAvailable,
                 i,
                 c,
                 request,
@@ -175,7 +159,7 @@ Dash.dependencies.BaseURLExtensions = function () {
                 irange,
                 self = this;
 
-            self.log("Searching for initialization.");
+            self.debug.log("Searching for initialization.");
 
             while (type !== "moov" && pos < d.byteLength) {
                 size = d.getUint32(pos); // subtract 8 for including the size and type
@@ -199,6 +183,8 @@ Dash.dependencies.BaseURLExtensions = function () {
                 }
             }
 
+            bytesAvailable = d.byteLength - pos;
+
             if (type !== "moov") {
                 // Case 1
                 // We didn't download enough bytes to find the moov.
@@ -206,7 +192,7 @@ Dash.dependencies.BaseURLExtensions = function () {
                 //        Be sure to detect EOF.
                 //        Throw error is no moov is found in the entire file.
                 //        Protection from loading the entire file?
-                self.log("Loading more bytes to find initialization.");
+                self.debug.log("Loading more bytes to find initialization.");
                 info.range.start = 0;
                 info.range.end = info.bytesLoaded + info.bytesToLoad;
 
@@ -230,7 +216,11 @@ Dash.dependencies.BaseURLExtensions = function () {
                     callback.call(self, null, new Error("Error loading initialization."));
                 };
 
-                sendRequest.call(self, request, info);
+                request.open("GET", self.requestModifierExt.modifyRequestURL(info.url));
+                request.responseType = "arraybuffer";
+                request.setRequestHeader("Range", "bytes=" + info.range.start + "-" + info.range.end);
+                request = self.requestModifierExt.modifyRequestHeader(request);
+                request.send(null);
             } else {
                 // Case 2
                 // We have the entire range, so continue.
@@ -238,7 +228,7 @@ Dash.dependencies.BaseURLExtensions = function () {
                 end = moov + size - 1;
                 irange = start + "-" + end;
 
-                self.log("Found the initialization.  Range: " + irange);
+                self.debug.log("Found the initialization.  Range: " + irange);
                 callback.call(self, irange);
             }
         },
@@ -258,7 +248,7 @@ Dash.dependencies.BaseURLExtensions = function () {
                     request: request
                 };
 
-            self.log("Start searching for initialization.");
+            self.debug.log("Start searching for initialization.");
             info.range.start = 0;
             info.range.end = info.bytesToLoad;
 
@@ -288,8 +278,12 @@ Dash.dependencies.BaseURLExtensions = function () {
                 self.notify(Dash.dependencies.BaseURLExtensions.eventList.ENAME_INITIALIZATION_LOADED, {representation: representation});
             };
 
-            sendRequest.call(self, request, info);
-            self.log("Perform init search: " + info.url);
+            request.open("GET", self.requestModifierExt.modifyRequestURL(info.url));
+            request.responseType = "arraybuffer";
+            request.setRequestHeader("Range", "bytes=" + info.range.start + "-" + info.range.end);
+            request = self.requestModifierExt.modifyRequestHeader(request);
+            request.send(null);
+            self.debug.log("Perform init search: " + info.url);
         },
 
         findSIDX = function (data, info, representation, callback) {
@@ -311,8 +305,8 @@ Dash.dependencies.BaseURLExtensions = function () {
                 loadMultiSidx = false,
                 self = this;
 
-            self.log("Searching for SIDX box.");
-            self.log(info.bytesLoaded + " bytes loaded.");
+            self.debug.log("Searching for SIDX box.");
+            self.debug.log(info.bytesLoaded + " bytes loaded.");
 
             while (type !== "sidx" && pos < d.byteLength) {
                 size = d.getUint32(pos); // subtract 8 for including the size and type
@@ -344,7 +338,7 @@ Dash.dependencies.BaseURLExtensions = function () {
                 // Case 2
                 // We don't have the entire box.
                 // Increase the number of bytes to read and load again.
-                self.log("Found SIDX but we don't have all of it.");
+                self.debug.log("Found SIDX but we don't have all of it.");
 
                 info.range.start = 0;
                 info.range.end = info.bytesLoaded + (size - bytesAvailable);
@@ -371,14 +365,18 @@ Dash.dependencies.BaseURLExtensions = function () {
                     callback.call(self);
                 };
 
-                sendRequest.call(self, request, info);
+                request.open("GET", self.requestModifierExt.modifyRequestURL(info.url));
+                request.responseType = "arraybuffer";
+                request.setRequestHeader("Range", "bytes=" + info.range.start + "-" + info.range.end);
+                request = self.requestModifierExt.modifyRequestHeader(request);
+                request.send(null);
             } else {
                 // Case 3
                 // We have the entire box, so parse it and continue.
                 info.range.start = pos - 8;
                 info.range.end = info.range.start + size;
 
-                self.log("Found the SIDX box.  Start: " + info.range.start + " | End: " + info.range.end);
+                self.debug.log("Found the SIDX box.  Start: " + info.range.start + " | End: " + info.range.end);
 //                sidxBytes = data.slice(info.range.start, info.range.end);
                 sidxBytes = new ArrayBuffer(info.range.end - info.range.start);
                 sidxOut = new Uint8Array(sidxBytes);
@@ -398,7 +396,7 @@ Dash.dependencies.BaseURLExtensions = function () {
                 }
 
                 if (loadMultiSidx) {
-                    self.log("Initiate multiple SIDX load.");
+                    self.debug.log("Initiate multiple SIDX load.");
 
                     var j, len, ss, se, r, segs = [],
                         count = 0,
@@ -424,7 +422,7 @@ Dash.dependencies.BaseURLExtensions = function () {
                     }
 
                 } else {
-                    self.log("Parsing segments from SIDX.");
+                    self.debug.log("Parsing segments from SIDX.");
                     segments = parseSegments.call(self, sidxBytes, info.url, info.range.start);
                     callback.call(self, segments);
                 }
@@ -451,7 +449,7 @@ Dash.dependencies.BaseURLExtensions = function () {
             // We might not know exactly where the sidx box is.
             // Load the first n bytes (say 1500) and look for it.
             if (theRange === null) {
-                self.log("No known range for SIDX request.");
+                self.debug.log("No known range for SIDX request.");
                 info.searching = true;
                 info.range.start = 0;
                 info.range.end = info.bytesToLoad;
@@ -494,16 +492,12 @@ Dash.dependencies.BaseURLExtensions = function () {
                 callback.call(self, null, representation, type);
             };
 
-            sendRequest.call(self, request, info);
-            self.log("Perform SIDX load: " + info.url);
-        },
-
-        sendRequest = function(request, info) {
-            request.open("GET", this.requestModifierExt.modifyRequestURL(info.url));
+            request.open("GET", self.requestModifierExt.modifyRequestURL(info.url));
             request.responseType = "arraybuffer";
             request.setRequestHeader("Range", "bytes=" + info.range.start + "-" + info.range.end);
-            request = this.requestModifierExt.modifyRequestHeader(request);
+            request = self.requestModifierExt.modifyRequestHeader(request);
             request.send(null);
+            self.debug.log("Perform SIDX load: " + info.url);
         },
 
         onLoaded = function(segments, representation, type) {
@@ -517,7 +511,7 @@ Dash.dependencies.BaseURLExtensions = function () {
         };
 
     return {
-        log: undefined,
+        debug: undefined,
         errHandler: undefined,
         requestModifierExt:undefined,
         notify: undefined,
